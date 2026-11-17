@@ -180,4 +180,94 @@
       window.open('https://wa.me/375296198106?text=' + encodeURIComponent(msg), '_blank');
     });
   }
+
+  /* ---- подбор Stage ---- */
+  var stageOut = $('stageOut');
+  if (stageOut) {
+    var fuel = $('fFuel'), hw = $('fHw'), goal = $('fGoal');
+    var FUEL = { petrol: 'бензин', diesel: 'дизель' };
+    var HW = { stock: 'всё заводское', mid: 'выпуск и впуск', full: 'турбина и форсунки' };
+    var GOAL = { city: 'увереннее в городе', road: 'тяга на трассе', max: 'максимум с железа' };
+    var ST = {
+      '1': { name: 'Stage 1', need: ['Исправный двигатель и турбина', 'Штатный выпуск и впуск', 'Проверка на ошибки до прошивки'],
+             get: ['Отклик на педаль и тяга в средних оборотах', 'Без замены железа', 'Замер динамики до и после'], note: '' },
+      '2': { name: 'Stage 2', need: ['Downpipe и интеркулер (желательно впуск)', 'Исправная турбина', 'Проверка смеси и наддува'],
+             get: ['Реализация установленного выпуска и впуска', 'Более полка момента', 'Программа под ваш набор деталей'], note: '' },
+      '3': { name: 'Stage 3', need: ['Заменённая турбина', 'Форсунки и топливный насос', 'Контроль температур и смеси'],
+             get: ['Максимум с текущего мотора', 'Индивидуальная калибровка под конфиг', 'Замер динамики до и после'], note: '' }
+    };
+    function pickStage() {
+      var f = fuel ? fuel.value : 'petrol', h = hw ? hw.value : 'stock', g = goal ? goal.value : 'city';
+      var lvl = '1';
+      if (h === 'full') lvl = '3';
+      else if (h === 'mid') lvl = '2';
+      else if (g !== 'city') lvl = '1';
+      var d = ST[lvl];
+      stageOut.innerHTML = '<span class="mono">рекомендация</span>' +
+        '<h3 style="margin-top:8px">' + d.name + '</h3>' +
+        '<p>' + (FUEL[f].charAt(0).toUpperCase() + FUEL[f].slice(1)) + ', ' + HW[h] + ', цель — ' + GOAL[g] + '.</p>' +
+        '<ul class="pick__list">' + d.need.map(function (x) { return '<li>' + x + '</li>'; }).join('') +
+        '<li style="margin-top:6px;color:#fff">Что получите:</li>' +
+        d.get.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' +
+        '<div class="pick__meta"><span class="chip chip--on">' + d.name + '</span>' +
+        '<span class="chip">' + FUEL[f] + '</span><span class="chip">' + HW[h] + '</span></div>' +
+        (h === 'stock' && g === 'max' ? '<p class="msg msg--err" style="margin-top:12px">Максимум со стока не получить: сначала железо (выпуск, впуск), потом Stage 2.</p>' : '') +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">' +
+        '<a class="btn" target="_blank" rel="noopener" href="https://wa.me/375296198106?text=' +
+        encodeURIComponent('Здравствуйте! Интересует ' + d.name + ': ' + FUEL[f] + ', ' + HW[h] + ', цель — ' + GOAL[g] + '.') + '">Спросить в WhatsApp</a>' +
+        '<a class="btn btn--ghost" href="tel:+375296198106">Позвонить</a></div>';
+      var msg = $('stageMsg'); if (msg) msg.textContent = '';
+    }
+    var sg = $('stageGo');
+    if (sg) sg.addEventListener('click', pickStage);
+    [fuel, hw, goal].forEach(function (el) { if (el) el.addEventListener('change', pickStage); });
+    pickStage();
+  }
+
+  /* ---- график Stage ---- */
+  var dynoSeg = $('dynoSeg');
+  if (dynoSeg) {
+    var CURVES = {
+      s1: [[60,235],[120,215],[180,190],[240,163],[300,140],[360,120],[420,112],[480,118],[540,135],[600,150]],
+      s2: [[60,232],[120,208],[180,178],[240,146],[300,118],[360,95],[420,84],[480,90],[540,108],[600,128]],
+      s3: [[60,228],[120,198],[180,162],[240,124],[300,92],[360,66],[420,52],[480,58],[540,80],[600,104]]
+    };
+    function smooth(pts) {
+      var d = 'M ' + pts[0][0] + ' ' + pts[0][1];
+      for (var i = 0; i < pts.length - 1; i++) {
+        var p0 = i > 0 ? pts[i - 1] : pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = (i + 2 < pts.length) ? pts[i + 2] : p2;
+        var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+        var c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+        d += ' C ' + c1x.toFixed(1) + ' ' + c1y.toFixed(1) + ' ' + c2x.toFixed(1) + ' ' + c2y.toFixed(1) + ' ' + p2[0] + ' ' + p2[1];
+      }
+      return d;
+    }
+    var path = $('dynoTuned');
+    dynoSeg.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-s');
+        path.setAttribute('d', smooth(CURVES[k]));
+        dynoSeg.querySelectorAll('button').forEach(function (x) {
+          x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+        });
+      });
+    });
+  }
+
+  /* ---- сборщик работ по экологии ---- */
+  var ecoOut = $('ecoOut');
+  if (ecoOut) {
+    var boxes = document.querySelectorAll('.build__list input[type=checkbox]');
+    var cnt = $('ecoCnt'), list = $('ecoList'), go = $('ecoGo');
+    function drawEco() {
+      var on = [];
+      boxes.forEach(function (b) { if (b.checked) on.push(b.parentElement.querySelector('b').textContent); });
+      cnt.textContent = String(on.length);
+      list.textContent = on.length ? on.join(' · ') : 'Пока ничего не выбрано';
+      go.setAttribute('href', 'https://wa.me/375296198106?text=' +
+        encodeURIComponent('Здравствуйте! Нужно по экологии: ' + (on.length ? on.join(', ') : 'нужна консультация') + '.'));
+    }
+    boxes.forEach(function (b) { b.addEventListener('change', drawEco); });
+    drawEco();
+  }
 })();
